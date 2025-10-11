@@ -1,0 +1,32 @@
+{
+    "dark": {
+        "background": "#151419",
+        "text": "#fbfbfb",
+        "cards": "#262626", 
+        "buttons": "#262626", 
+        "subtitles": "#ede6d9b0",
+        "chart": "#fbfbfb",
+        "inactivechart": "#ede6d9b0",
+        "trainingrows": "#1b1b1e",
+        "borders": "#fbfbfb"
+    },
+    "light": {
+        "background": "#fbfbfb",
+        "text": "#262626",
+        "cards": "#fff", 
+        "buttons": "#fff", 
+        "subtitles": "#3f3f3f",
+        "chart": "#262626",
+        "inactivechart": "#a3a3a3",
+        "trainingrows": "#e8e7e7",
+        "borders": "#262626"
+    },
+    "calorietypes": {
+        "protein": "#f21616",
+        "proteinunactive": "#f57373",
+        "carbs": "#fa9e1e",
+        "carbsunactive": "#a5c8fa",
+        "fat": "#4d6cf7",
+        "fatunactive": "#7d94fa"
+    }
+}

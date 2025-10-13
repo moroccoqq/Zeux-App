@@ -45,7 +45,10 @@ export default function Add() {
   ];
 
   return (
-    <SafeAreaView style={[styles.fullScreen, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      edges={["left", "right", "bottom"]}
+      style={[styles.fullScreen, { backgroundColor: theme.background }]}
+    >
       <StatusBar
         backgroundColor={theme.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}

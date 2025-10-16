@@ -48,7 +48,7 @@ export default function Home() {
         >
           <Text style={[{ color: theme.text, fontSize: 20 }]}>{value}g</Text>
 
-          <Text style={{ color: theme.text, fontSize: 16 }}>
+         <Text style={{ color: theme.text, fontSize: 16 }}>
             {type}{" "}
             <Text
               style={{
@@ -93,76 +93,83 @@ export default function Home() {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[styles.infoCard, { backgroundColor: theme.cards }]}
-        >
+        <View>
           <View
-            style={{
-              flexDirection: "column",
-              flex: 1,
-              marginLeft: 7,
-              justifyContent: "center",
-            }}
+            style={[styles.infoCard, { backgroundColor: theme.cards }]}
           >
-            <Text style={[styles.cardValue, { color: theme.text }]}>
-              {data.cal.today} / {data.startvalues.cal}
-            </Text>
-
-            <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-              Calories eaten 🍱
-            </Text>
+            <View
+              style={{
+                flexDirection: "column",
+                flex: 1,
+                marginLeft: 7,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={[styles.cardValue, { color: theme.text }]}>
+                {data.cal.today} / {data.startvalues.cal}
+              </Text>
+  
+              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
+                Calories eaten 🍱
+              </Text>
+            </View>
+  
+            <CircularProgress
+              value={Math.min(data.cal.today, data.startvalues.cal)}
+              activeStrokeWidth={14}
+              inActiveStrokeWidth={10}
+              inActiveStrokeOpacity={0.2}
+              radius={60}
+              duration={1000}
+              maxValue={data.startvalues.cal}
+              activeStrokeColor={theme.chart}
+              inActiveStrokeColor={theme.inactivechart}
+            />
           </View>
-
-          <CircularProgress
-            value={Math.min(data.cal.today, data.startvalues.cal)}
-            activeStrokeWidth={14}
-            inActiveStrokeWidth={10}
-            inActiveStrokeOpacity={0.2}
-            radius={60}
-            duration={1000}
-            maxValue={data.startvalues.cal}
-            activeStrokeColor={theme.chart}
-            inActiveStrokeColor={theme.inactivechart}
-          />
-        </View>
-
-        <View style={styles.moreInfoCardRow}>
-          {moreInfoCards(255, "Protein", 255, "protein")}
-          {moreInfoCards(250, "Carbs", 300, "carbs")}
-          {moreInfoCards(20, "Fats", 70, "fat")}
-        </View>
-
-        <View
-          style={[styles.infoCard, { backgroundColor: theme.cards }]}
-        >
+  
+          <View style={styles.moreInfoCardRow}>
+            {moreInfoCards(255, "Protein", 255, "protein")}
+            {moreInfoCards(250, "Carbs", 300, "carbs")}
+            {moreInfoCards(20, "Fats", 70, "fat")}
+          </View>
+  
           <View
-            style={{
-              flexDirection: "column",
-              flex: 1,
-              marginLeft: 7,
-              justifyContent: "center",
-            }}
+            style={[styles.infoCard, { backgroundColor: theme.cards }]}
           >
-            <Text style={[styles.cardValue, { color: theme.text }]}>
-              {data.kcal.today} / {data.startvalues.kcal}
-            </Text>
+            <View
+              style={{
+                flexDirection: "column",
+                flex: 1,
+                marginLeft: 7,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={[styles.cardValue, { color: theme.text }]}>
+                {data.kcal.today} / {data.startvalues.kcal}
+              </Text>
 
-            <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-              Calories burned 🔥
-            </Text>
+              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
+                Calories burned 🔥
+              </Text>
+            </View>
+  
+            <CircularProgress
+              value={Math.min(data.kcal.today, data.startvalues.kcal)}
+              activeStrokeWidth={14}
+              inActiveStrokeWidth={10}
+              inActiveStrokeOpacity={0.2}
+              radius={60}
+              duration={1000}
+              maxValue={data.startvalues.kcal}
+              activeStrokeColor={theme.chart}
+              inActiveStrokeColor={theme.inactivechart}
+            />
           </View>
+        </View>
+        {// end of the main information view}
 
-          <CircularProgress
-            value={Math.min(data.kcal.today, data.startvalues.kcal)}
-            activeStrokeWidth={14}
-            inActiveStrokeWidth={10}
-            inActiveStrokeOpacity={0.2}
-            radius={60}
-            duration={1000}
-            maxValue={data.startvalues.kcal}
-            activeStrokeColor={theme.chart}
-            inActiveStrokeColor={theme.inactivechart}
-          />
+        <View>
+          
         </View>
       </ScrollView>
     </SafeAreaView>

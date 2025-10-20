@@ -13,15 +13,15 @@
             "state": {
               "type": "canvas",
               "state": {
-                "file": "Training View Homepage.canvas",
+                "file": "Welcome page.canvas",
                 "viewState": {
-                  "x": -150,
-                  "y": 109.30000000000004,
+                  "x": -212,
+                  "y": -177,
                   "zoom": 0
                 }
               },
               "icon": "lucide-layout-dashboard",
-              "title": "Training View Homepage"
+              "title": "Welcome page"
             }
           }
         ]
@@ -174,8 +174,10 @@
   },
   "active": "36a52867df36dd36",
   "lastOpenFiles": [
-    "Untitled.md",
+    "Login logic.canvas",
+    "Welcome page.canvas",
     "Training View Homepage.canvas",
+    "Untitled.md",
     "Welcome.md"
   ]
 }

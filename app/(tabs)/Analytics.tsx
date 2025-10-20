@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from "react";
 import {
   Pressable,
@@ -23,14 +23,6 @@ const data = {
   cal: { today: 800 },
   kcal: { today: 700 },
   startvalues: { cal: 1200, kcal: 1000 },
-};
-
-const shadowStyle = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 4,
 };
 
 export default function Analytics() {
@@ -68,10 +60,13 @@ export default function Analytics() {
   ];
 
   const renderTrainingList = (title: string, data: Training[]) => (
-    <View style={[styles.cardFullWidth, shadowStyle, { backgroundColor: theme.cards }]}>
+    <View style={[styles.cardFullWidth, { backgroundColor: theme.cards }]}>
       <Text style={[styles.cardTitle, { color: theme.text }]}>{title}</Text>
       {data.map((t, i) => (
-        <View key={i} style={[styles.trainingRow, shadowStyle, { backgroundColor: theme.trainingrows }]}>
+        <View
+          key={i}
+          style={[styles.trainingRow, { backgroundColor: theme.trainingrows }]}
+        >
           <Text style={[styles.trainingText, { color: theme.text }]}>{t.type}</Text>
           <Text style={[styles.trainingText, { color: theme.text }]}>{t.duration}</Text>
           <Text style={[styles.trainingText, { color: theme.text }]}>{t.kcal} kcal</Text>
@@ -86,7 +81,7 @@ export default function Analytics() {
         return (
           <View style={styles.mainContentWrapper}>
             <View style={styles.rowWrapper}>
-              <View style={[styles.card, shadowStyle, { backgroundColor: theme.cards }]}>
+              <View style={[styles.card, { backgroundColor: theme.cards }]}>
                 <CircularProgress
                   value={Math.min(data.cal.today, data.startvalues.cal)}
                   maxValue={data.startvalues.cal}
@@ -101,9 +96,11 @@ export default function Analytics() {
                 <Text style={[styles.cardValue, { color: theme.text }]}>
                   {data.cal.today} / {data.startvalues.cal}
                 </Text>
-                <Text style={[styles.cardLabel, { color: theme.text }]}>Calories eaten 🍱</Text>
+                <Text style={[styles.cardLabel, { color: theme.text }]}>
+                  Calories eaten 🍱
+                </Text>
               </View>
-              <View style={[styles.card, shadowStyle, { backgroundColor: theme.cards }]}>
+              <View style={[styles.card, { backgroundColor: theme.cards }]}>
                 <CircularProgress
                   value={Math.min(data.kcal.today, data.startvalues.kcal)}
                   maxValue={data.startvalues.kcal}
@@ -118,7 +115,9 @@ export default function Analytics() {
                 <Text style={[styles.cardValue, { color: theme.text }]}>
                   {data.kcal.today} / {data.startvalues.kcal}
                 </Text>
-                <Text style={[styles.cardLabel, { color: theme.text }]}>Calories burned 🔥</Text>
+                <Text style={[styles.cardLabel, { color: theme.text }]}>
+                  Calories burned 🔥
+                </Text>
               </View>
             </View>
             {renderTrainingList("Yesterday's Trainings 🏋️‍♀️", yesterdayTrainings)}
@@ -130,12 +129,15 @@ export default function Analytics() {
           <View style={styles.mainContentWrapper}>
             {renderTrainingList("This Week's Trainings 📆", weekTrainings)}
             <Pressable
-              style={[
-                styles.viewAllButton,
-                shadowStyle,
-                { backgroundColor: theme.buttons },
-              ]}
-              onPress={() => router.push("/AllWeekTrainings")}
+              style={{
+                marginTop: 12,
+                backgroundColor: theme.buttons,
+                paddingVertical: 10,
+                borderRadius: 8,
+                alignItems: "center",
+                boxShadow: "0 6px 6px rgba(0, 0, 0, 0.1)",
+              }}
+              onPress={() => router.navigate("/AllWeekTrainings")}
             >
               <Text style={{ color: theme.text, fontSize: 18, fontWeight: "500" }}>
                 Show All Trainings
@@ -157,45 +159,48 @@ export default function Analytics() {
   };
 
   return (
-    <View style={[styles.fullScreen, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.fullScreen, { backgroundColor: theme.background }]}
+      edges={["left", "right", "bottom"]} // ✅ фикс: не учитываем верхний safe area
+    >
       <StatusBar
         backgroundColor={theme.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        translucent={false}
       />
-      <SafeAreaView edges={["left", "right", "bottom"]} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 50 }}>
-          <View style={styles.timebuttons}>
-            {["yesterday", "week", "month"].map((period) => (
-              <Pressable
-                key={period}
-                onPress={() => setSelectedPeriod(period)}
-                style={({ pressed }) => [
-                  styles.links,
-                  pressed && { opacity: 0.7 },
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={styles.timebuttons}>
+          {["yesterday", "week", "month"].map((period) => (
+            <Pressable
+              key={period}
+              onPress={() => setSelectedPeriod(period)}
+              style={({ pressed }) => [
+                styles.links,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.linkText,
+                  { color: theme.text },
+                  selectedPeriod === period && { fontWeight: "600" },
                 ]}
               >
-                <Text
+                {period[0].toUpperCase() + period.slice(1)}
+              </Text>
+              {selectedPeriod === period && (
+                <View
                   style={[
-                    styles.linkText,
-                    { color: theme.text },
-                    selectedPeriod === period && { fontWeight: "600" },
+                    styles.activePeriodIndicator,
+                    { backgroundColor: theme.text },
                   ]}
-                >
-                  {period[0].toUpperCase() + period.slice(1)}
-                </Text>
-                {selectedPeriod === period && (
-                  <View
-                    style={[styles.activePeriodIndicator, { backgroundColor: theme.text }]}
-                  />
-                )}
-              </Pressable>
-            ))}
-          </View>
-          {renderContent()}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+                />
+              )}
+            </Pressable>
+          ))}
+        </View>
+        {renderContent()}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -213,10 +218,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 20,
     padding: 15,
+    elevation: 4,
+    boxShadow: "0 4px 4px rgba(0, 0, 0, 0.1)",
   },
   cardFullWidth: {
     borderRadius: 20,
     padding: 15,
+    elevation: 4,
     marginBottom: 20,
     paddingTop: 20,
   },
@@ -242,6 +250,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
     marginBottom: 10,
+    boxShadow: "0 4px 4px rgba(0, 0, 0, 0.1)",
   },
   trainingText: {
     fontSize: 16,
@@ -268,11 +277,5 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-  },
-  viewAllButton: {
-    marginTop: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: "center",
   },
 });

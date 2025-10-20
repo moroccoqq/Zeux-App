@@ -27,112 +27,152 @@ export default function Home() {
     return colorScheme === "dark" ? colors.dark : colors.light;
   }, [colorScheme]);
 
+  type CalorieType = keyof typeof colors.calorietypes;
+
+  const moreInfoCards = (
+    value: number,
+    type: string,
+    maxValue: number,
+    colortypes: CalorieType
+  ) => {
+    const unactivecolor =
+      colors.calorietypes[colortypes + "unactive" as CalorieType];
+    return (
+      <View style={[styles.moreInfoCard, { backgroundColor: theme.cards }]}>
+        <View
+          style={{
+            flexDirection: "column",
+            alignItems: "flex-start",
+            marginBottom: 15,
+          }}
+        >
+          <Text style={[{ color: theme.text, fontSize: 20 }]}>{value}g</Text>
+
+         <Text style={{ color: theme.text, fontSize: 16 }}>
+            {type}{" "}
+            <Text
+              style={{
+                fontWeight: "600",
+                color: theme.text,
+                fontSize: 16,
+              }}
+            >
+              left
+            </Text>
+          </Text>
+        </View>
+
+        <CircularProgress
+          value={value}
+          activeStrokeWidth={10}
+          inActiveStrokeWidth={6}
+          inActiveStrokeOpacity={0.2}
+          radius={40}
+          duration={1000}
+          maxValue={maxValue}
+          activeStrokeColor={colors.calorietypes[colortypes]}
+          inActiveStrokeColor={unactivecolor}
+          titleStyle={{ fontSize: 16, color: theme.text }}
+          titleColor={theme.text}
+        />
+      </View>
+    );
+  };
+
   return (
-    <View style={[styles.fullScreen, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.fullScreen, { backgroundColor: theme.background }]}
+      edges={["left", "right", "bottom"]} // ✅ фикс: игнорируем верхний safe area
+    >
       <StatusBar
         backgroundColor={theme.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
-        translucent={false}
       />
-      <SafeAreaView edges={["left", "right", "bottom"]} style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.cardGroupWrapper}>
-            <View style={styles.rowWrapper}>
-              <View style={[styles.card, { backgroundColor: theme.cards }]}>
-                <CircularProgress
-                  value={Math.min(data.cal.today, data.startvalues.cal)}
-                  activeStrokeWidth={14}
-                  inActiveStrokeWidth={10}
-                  inActiveStrokeOpacity={0.2}
-                  radius={60}
-                  duration={1000}
-                  maxValue={data.startvalues.cal}
-                  activeStrokeColor={theme.chart}
-                  inActiveStrokeColor={theme.inactivechart}
-                />
-                <Text style={[styles.cardValue, { color: theme.text }]}>
-                  {data.cal.today} / {data.startvalues.cal}
-                </Text>
-                <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-                  Calories eaten 🍱
-                </Text>
-              </View>
 
-              <View style={[styles.card, { backgroundColor: theme.cards }]}>
-                <CircularProgress
-                  value={Math.min(data.kcal.today, data.startvalues.kcal)}
-                  activeStrokeWidth={14}
-                  inActiveStrokeWidth={10}
-                  inActiveStrokeOpacity={0.2}
-                  radius={60}
-                  duration={1000}
-                  maxValue={data.startvalues.kcal}
-                  activeStrokeColor={theme.chart}
-                  inActiveStrokeColor={theme.inactivechart}
-                />
-                <Text style={[styles.cardValue, { color: theme.text }]}>
-                  {data.kcal.today} / {data.startvalues.kcal}
-                </Text>
-                <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-                  Calories burned 🔥
-                </Text>
-              </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View>
+          <View
+            style={[styles.infoCard, { backgroundColor: theme.cards }]}
+          >
+            <View
+              style={{
+                flexDirection: "column",
+                flex: 1,
+                marginLeft: 7,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={[styles.cardValue, { color: theme.text }]}>
+                {data.cal.today} / {data.startvalues.cal}
+              </Text>
+  
+              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
+                Calories eaten 🍱
+              </Text>
             </View>
-
-            <View style={[styles.cardFullWidth, { backgroundColor: theme.cards }]}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>
-                Today's Trainings 🏋️‍♀️
+  
+            <CircularProgress
+              value={Math.min(data.cal.today, data.startvalues.cal)}
+              activeStrokeWidth={14}
+              inActiveStrokeWidth={10}
+              inActiveStrokeOpacity={0.2}
+              radius={60}
+              duration={1000}
+              maxValue={data.startvalues.cal}
+              activeStrokeColor={theme.chart}
+              inActiveStrokeColor={theme.inactivechart}
+            />
+          </View>
+  
+          <View style={styles.moreInfoCardRow}>
+            {moreInfoCards(255, "Protein", 255, "protein")}
+            {moreInfoCards(250, "Carbs", 300, "carbs")}
+            {moreInfoCards(20, "Fats", 70, "fat")}
+          </View>
+  
+          <View
+            style={[styles.infoCard, { backgroundColor: theme.cards }]}
+          >
+            <View
+              style={{
+                flexDirection: "column",
+                flex: 1,
+                marginLeft: 7,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={[styles.cardValue, { color: theme.text }]}>
+                {data.kcal.today} / {data.startvalues.kcal}
               </Text>
 
-              <View
-                style={[styles.trainingRow, { backgroundColor: theme.trainingrows }]}
-              >
-                <Text style={[styles.trainingType, { color: theme.text }]}>
-                  💪 Strength
-                </Text>
-                <Text style={[styles.trainingTime, { color: theme.text }]}>
-                  45 min
-                </Text>
-                <Text style={[styles.trainingKcal, { color: theme.text }]}>
-                  300 kcal
-                </Text>
-              </View>
-
-              <View
-                style={[styles.trainingRow, { backgroundColor: theme.trainingrows }]}
-              >
-                <Text style={[styles.trainingType, { color: theme.text }]}>
-                  🏃‍♂️ Cardio
-                </Text>
-                <Text style={[styles.trainingTime, { color: theme.text }]}>
-                  30 min
-                </Text>
-                <Text style={[styles.trainingKcal, { color: theme.text }]}>
-                  400 kcal
-                </Text>
-              </View>
-
-              <View
-                style={[styles.trainingRow, { backgroundColor: theme.trainingrows }]}
-              >
-                <Text style={[styles.trainingType, { color: theme.text }]}>
-                  🧘 Yoga
-                </Text>
-                <Text style={[styles.trainingTime, { color: theme.text }]}>
-                  60 min
-                </Text>
-                <Text style={[styles.trainingKcal, { color: theme.text }]}>
-                  200 kcal
-                </Text>
-              </View>
+              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
+                Calories burned 🔥
+              </Text>
             </View>
+  
+            <CircularProgress
+              value={Math.min(data.kcal.today, data.startvalues.kcal)}
+              activeStrokeWidth={14}
+              inActiveStrokeWidth={10}
+              inActiveStrokeOpacity={0.2}
+              radius={60}
+              duration={1000}
+              maxValue={data.startvalues.kcal}
+              activeStrokeColor={theme.chart}
+              inActiveStrokeColor={theme.inactivechart}
+            />
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+        </View>
+        {// end of the main information view}
+
+        <View>
+          
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -140,35 +180,34 @@ const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
   },
-  safeArea: {
-    flex: 1,
-  },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-  cardGroupWrapper: {
-    flex: 1,
-    gap: 10,
-  },
-  rowWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  card: {
-    flex: 1,
-    alignItems: "center",
-    borderRadius: 20,
-    padding: 15,
-    elevation: 5,
-  },
-  cardFullWidth: {
+  infoCard: {
     borderRadius: 20,
     padding: 15,
     marginTop: 7,
+    boxShadow:
+      "0 0px 12px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 6px hsla(0, 0%, 28%, 0.2)",
+    justifyContent: "center",
+    flexDirection: "row",
+  },
+  moreInfoCard: {
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 15,
     elevation: 5,
+    flexDirection: "column",
+    marginBottom: 9,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  moreInfoCardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
   cardValue: {
     fontSize: 20,
@@ -178,35 +217,12 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 20,
     marginTop: 4,
-    textAlign: "center",
+    textAlign: "left",
   },
   cardTitle: {
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 15,
-    textAlign: "center",
-  },
-  trainingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    marginBottom: 8,
-    elevation: 2,
-  },
-  trainingType: {
-    flex: 2,
-    fontSize: 18,
-  },
-  trainingTime: {
-    flex: 1,
-    fontSize: 18,
-    textAlign: "center",
-  },
-  trainingKcal: {
-    flex: 1,
-    fontSize: 18,
-    textAlign: "right",
+    textAlign: "left",
   },
 });

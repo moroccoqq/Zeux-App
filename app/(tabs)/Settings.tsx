@@ -64,9 +64,7 @@ const SettingsItem = ({
       onPress={onPress}
     >
       <View style={styles.itemLeft}>
-        <View
-          style={[styles.iconContainer, { backgroundColor: themeColors.buttons }]}
-        >
+        <View style={[styles.iconContainer, { backgroundColor: themeColors.buttons }]}>
           <Ionicons name={icon} size={22} color={themeColors.text} />
         </View>
         <View style={styles.itemText}>
@@ -95,7 +93,6 @@ export default function Settings() {
   const [notifications, setNotifications] = useState(true);
 
   const handleProfile = () => router.push("/profile");
-
   const handleNotifications = (value: boolean) => setNotifications(value);
 
   const handleAbout = () =>
@@ -106,9 +103,7 @@ export default function Settings() {
     );
 
   const handlePrivacyPolicy = () => Linking.openURL("https://fitai.com/privacy");
-
   const handleTerms = () => Linking.openURL("https://fitai.com/terms");
-
   const handleContact = () => Linking.openURL("mailto:support@fitai.com");
 
   const handleRateApp = () => {
@@ -130,7 +125,10 @@ export default function Settings() {
     ]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView
+      edges={["left", "right", "bottom"]}
+      style={[styles.container, { backgroundColor: themeColors.background }]}
+    >
       <StatusBar
         backgroundColor={themeColors.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
@@ -161,21 +159,9 @@ export default function Settings() {
         </SettingsSection>
 
         <SettingsSection title="App">
-          <SettingsItem
-            icon="information-circle-outline"
-            title="About"
-            onPress={handleAbout}
-          />
-          <SettingsItem
-            icon="shield-checkmark-outline"
-            title="Privacy Policy"
-            onPress={handlePrivacyPolicy}
-          />
-          <SettingsItem
-            icon="document-text-outline"
-            title="Terms of Service"
-            onPress={handleTerms}
-          />
+          <SettingsItem icon="information-circle-outline" title="About" onPress={handleAbout} />
+          <SettingsItem icon="shield-checkmark-outline" title="Privacy Policy" onPress={handlePrivacyPolicy} />
+          <SettingsItem icon="document-text-outline" title="Terms of Service" onPress={handleTerms} />
         </SettingsSection>
 
         <SettingsSection title="Support">
@@ -195,12 +181,8 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  scrollView: { flex: 1 },
   section: {
     marginBottom: 24,
     paddingHorizontal: 16,
@@ -215,7 +197,11 @@ const styles = StyleSheet.create({
   sectionContent: {
     borderRadius: 16,
     overflow: "hidden",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   item: {
     flexDirection: "row",
@@ -223,11 +209,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 16,
   },
-  itemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
+  itemLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
   iconContainer: {
     width: 32,
     height: 32,
@@ -236,27 +218,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
   },
-  itemText: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  itemSubtitle: {
-    fontSize: 14,
-    marginTop: 2,
-  },
+  itemText: { flex: 1 },
+  itemTitle: { fontSize: 16, fontWeight: "500" },
+  itemSubtitle: { fontSize: 14, marginTop: 2 },
   logoutButton: {
     marginHorizontal: 16,
     marginBottom: 32,
     padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    boxShadow: "0 4px 4px rgba(0, 0, 0, 0.1)",
-    },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: "600",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
+  logoutText: { fontSize: 16, fontWeight: "600" },
 });

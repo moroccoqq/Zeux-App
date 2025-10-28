@@ -3,15 +3,15 @@ import { Tabs } from "expo-router";
 import { Image, StyleSheet, Text, useColorScheme, View } from "react-native";
 import colors from "../../data/colors.json";
 
-const FitAiIcon_dark = require("../../assets/images/fitaiicon-black.png");
-const FitAiIcon_light = require("../../assets/images/fitaiicon-white.png");
+const ZeuxIcon_dark = require("../../assets/images/zeuxicon-black.png");
+const ZeuxIcon_light = require("../../assets/images/zeuxicon-white.png");
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   // Dynamically select colors based on theme
   const theme = colorScheme === "dark" ? colors.dark : colors.light;
-  const FitAiIcon = colorScheme === "dark" ? FitAiIcon_light : FitAiIcon_dark;
+  const ZeuxIcon = colorScheme === "dark" ? ZeuxIcon_light : ZeuxIcon_dark;
 
   const HeaderRightTitle = ({ title }: { title: string }) => (
     <View style={{ paddingRight: 15 }}>
@@ -38,7 +38,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="Home"
         options={{
-          headerTitle: () => <Image source={FitAiIcon} alt="Fit AI" style={styles.headerImageStyle} />,
+          headerTitle: () => <Image source={ZeuxIcon} alt="Zeux" style={styles.headerImageStyle} />,
           headerRight: () => <HeaderRightTitle title="Home" />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "home-sharp" : "home-outline"} color={color} size={25} />
@@ -49,7 +49,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="Analytics"
         options={{
-          headerTitle: () => <Image source={FitAiIcon} alt="Fit AI" style={styles.headerImageStyle} />,
+          headerTitle: () => <Image source={ZeuxIcon} alt="Zeux" style={styles.headerImageStyle} />,
           headerRight: () => <HeaderRightTitle title="Analytics" />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "podium" : "podium-outline"} color={color} size={25} />
@@ -60,21 +60,10 @@ export default function RootLayout() {
       <Tabs.Screen
         name="Settings"
         options={{
-          headerTitle: () => <Image source={FitAiIcon} alt="Fit AI" style={styles.headerImageStyle} />,
+          headerTitle: () => <Image source={ZeuxIcon} alt="Zeux" style={styles.headerImageStyle} />,
           headerRight: () => <HeaderRightTitle title="Settings" />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons name={focused ? "settings" : "settings-outline"} color={color} size={25} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="Add"
-        options={{
-          headerTitle: () => <Image source={FitAiIcon} alt="Fit AI" style={styles.headerImageStyle} />,
-          headerRight: () => <HeaderRightTitle title="Add" />,
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons name={focused ? "add-circle" : "add-circle-outline"} color={color} size={30} />
           ),
         }}
       />
@@ -88,8 +77,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   headerImageStyle: {
-    width: 80,
-    height: 31,
+    width: 100,
+    height: 38,
     resizeMode: "contain",
   },
 });

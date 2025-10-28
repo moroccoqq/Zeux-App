@@ -1,0 +1,10 @@
+<svg width="300" height="115" viewBox="0 0 300 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded rectangle -->
+  <rect width="300" height="115" rx="20" fill="transparent"/>
+
+  <!-- Zeux text in black for light backgrounds -->
+  <text x="150" y="75" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#262626" text-anchor="middle" letter-spacing="-2">Zeux</text>
+
+  <!-- Accent underline -->
+  <rect x="95" y="85" width="110" height="6" rx="3" fill="#262626"/>
+</svg>

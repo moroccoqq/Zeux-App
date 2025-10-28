@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
   Image,
   Pressable,
@@ -10,11 +10,16 @@ import {
   Text,
   useColorScheme,
   View,
+  Dimensions,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import CircularProgress from "react-native-circular-progress-indicator";
 import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "../../data/colors.json";
 import { useData } from "../../contexts/DataContext";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Placeholder image for foods without photos
 const placeholderImage = require('../../assets/images/green.png');
@@ -30,6 +35,8 @@ const trainingIcons: { [key: string]: string } = {
 export default function Home() {
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [currentPage, setCurrentPage] = useState(0);
   const {
     getTodayFoods,
     getTodayTrainings,
@@ -37,11 +44,22 @@ export default function Home() {
     getTodayMacros,
     calorieGoal,
     exerciseGoal,
+    waterIntake,
+    waterGoal,
+    steps,
+    incrementWater,
+    decrementWater,
   } = useData();
 
   const theme = useMemo(() => {
     return colorScheme === "dark" ? colors.dark : colors.light;
   }, [colorScheme]);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const page = Math.round(offsetX / SCREEN_WIDTH);
+    setCurrentPage(page);
+  };
 
   // Get data from context
   const recentFoods = getTodayFoods().slice(0, 3); // Show last 3
@@ -60,28 +78,31 @@ export default function Home() {
     value: number,
     type: string,
     maxValue: number,
-    colortypes: CalorieType
+    colortypes: CalorieType,
+    iconName: string
   ) => {
     const unactivecolor =
       colors.calorietypes[colortypes + "unactive" as CalorieType];
+    const percentage = maxValue > 0 ? ((maxValue - value) / maxValue) * 100 : 0;
+
     return (
-      <View style={[styles.moreInfoCard, { backgroundColor: theme.cards }]}>
+      <View style={[styles.compactMacroCard, { backgroundColor: theme.cards }]}>
         <View
           style={{
             flexDirection: "column",
             alignItems: "flex-start",
-            marginBottom: 15,
+            marginBottom: 8,
           }}
         >
-          <Text style={[{ color: theme.text, fontSize: 20 }]}>{value}g</Text>
+          <Text style={[{ color: theme.text, fontSize: 18, fontWeight: "700" }]}>{value}g</Text>
 
-         <Text style={{ color: theme.text, fontSize: 16 }}>
+         <Text style={{ color: theme.text, fontSize: 13 }}>
             {type}{" "}
             <Text
               style={{
                 fontWeight: "600",
                 color: theme.text,
-                fontSize: 16,
+                fontSize: 13,
               }}
             >
               left
@@ -89,19 +110,27 @@ export default function Home() {
           </Text>
         </View>
 
-        <CircularProgress
-          value={value}
-          activeStrokeWidth={10}
-          inActiveStrokeWidth={6}
-          inActiveStrokeOpacity={0.2}
-          radius={40}
-          duration={1000}
-          maxValue={maxValue}
-          activeStrokeColor={colors.calorietypes[colortypes]}
-          inActiveStrokeColor={unactivecolor}
-          titleStyle={{ fontSize: 16, color: theme.text }}
-          titleColor={theme.text}
-        />
+        <View style={styles.compactMacroCircle}>
+          <CircularProgress
+            value={Math.max(0, maxValue - value)}
+            activeStrokeWidth={6}
+            inActiveStrokeWidth={6}
+            inActiveStrokeOpacity={0.15}
+            radius={30}
+            duration={1000}
+            maxValue={maxValue}
+            activeStrokeColor={colors.calorietypes[colortypes]}
+            inActiveStrokeColor={unactivecolor}
+            showProgressValue={false}
+          />
+          <View style={styles.compactMacroIcon}>
+            <Ionicons
+              name={iconName as any}
+              size={18}
+              color={colors.calorietypes[colortypes]}
+            />
+          </View>
+        </View>
       </View>
     );
   };
@@ -117,83 +146,140 @@ export default function Home() {
       />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        style={styles.mainContent}
+        contentContainerStyle={styles.mainContentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View>
-          <View
-            style={[styles.infoCard, { backgroundColor: theme.cards }]}
+        {/* Horizontal Scrollable Top Section */}
+        <View style={styles.topScrollContainer}>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.horizontalScroll}
+            nestedScrollEnabled={true}
           >
-            <View
-              style={{
-                flexDirection: "column",
-                flex: 1,
-                marginLeft: 7,
-                justifyContent: "center",
-              }}
-            >
-              <Text style={[styles.cardValue, { color: theme.text }]}>
-                {eaten} / {calorieGoal}
-              </Text>
+            {/* Page 1: Calories and Macros */}
+            <View style={[styles.topPage, { width: SCREEN_WIDTH }]}>
+              <View style={styles.topPageContent}>
+                <View style={[styles.caloriesCompactCard, { backgroundColor: theme.cards }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.compactCardValue, { color: theme.text }]}>
+                      {Math.max(0, calorieGoal - eaten)}
+                    </Text>
+                    <Text style={[styles.compactCardLabel, { color: theme.text }]}>
+                      Calories left
+                    </Text>
+                  </View>
+                  <View style={styles.compactCardCircle}>
+                    <CircularProgress
+                      value={Math.min(eaten, calorieGoal)}
+                      activeStrokeWidth={8}
+                      inActiveStrokeWidth={8}
+                      inActiveStrokeOpacity={0.15}
+                      radius={40}
+                      duration={1000}
+                      maxValue={calorieGoal}
+                      activeStrokeColor={theme.chart}
+                      inActiveStrokeColor={theme.inactivechart}
+                      showProgressValue={false}
+                    />
+                    <View style={styles.compactCardIcon}>
+                      <Ionicons name="flame" size={24} color={theme.chart} />
+                    </View>
+                  </View>
+                </View>
 
-              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-                Calories eaten 🍱
-              </Text>
+                <View style={styles.compactMacroRow}>
+                  {moreInfoCards(Math.max(0, proteinGoal - macros.protein), "Protein", proteinGoal, "protein", "nutrition-outline")}
+                  {moreInfoCards(Math.max(0, carbsGoal - macros.carbs), "Carbs", carbsGoal, "carbs", "leaf-outline")}
+                  {moreInfoCards(Math.max(0, fatsGoal - macros.fats), "Fats", fatsGoal, "fat", "water-outline")}
+                </View>
+              </View>
             </View>
 
-            <CircularProgress
-              value={Math.min(eaten, calorieGoal)}
-              activeStrokeWidth={14}
-              inActiveStrokeWidth={10}
-              inActiveStrokeOpacity={0.2}
-              radius={60}
-              duration={1000}
-              maxValue={calorieGoal}
-              activeStrokeColor={theme.chart}
-              inActiveStrokeColor={theme.inactivechart}
-            />
-          </View>
-  
-          <View style={styles.moreInfoCardRow}>
-            {moreInfoCards(proteinGoal - macros.protein, "Protein", proteinGoal, "protein")}
-            {moreInfoCards(carbsGoal - macros.carbs, "Carbs", carbsGoal, "carbs")}
-            {moreInfoCards(fatsGoal - macros.fats, "Fats", fatsGoal, "fat")}
-          </View>
-  
-          <View
-            style={[styles.infoCard, { backgroundColor: theme.cards }]}
-          >
-            <View
-              style={{
-                flexDirection: "column",
-                flex: 1,
-                marginLeft: 7,
-                justifyContent: "center",
-              }}
-            >
-              <Text style={[styles.cardValue, { color: theme.text }]}>
-                {burned} / {exerciseGoal}
-              </Text>
+            {/* Page 2: Steps and Water */}
+            <View style={[styles.topPage, { width: SCREEN_WIDTH }]}>
+              <View style={styles.topPageContent}>
+                {/* Steps Card */}
+                <View style={[styles.compactStepsCard, { backgroundColor: theme.cards }]}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <Ionicons name="flame" size={20} color={theme.chart} />
+                    <Text style={[styles.compactCardValue, { color: theme.text, fontSize: 24 }]}>
+                      {burned}
+                    </Text>
+                  </View>
+                  <Text style={[styles.compactCardLabel, { color: theme.text }]}>
+                    Calories burned
+                  </Text>
+                  <View style={styles.compactStepsMeta}>
+                    <Ionicons name="footsteps-outline" size={14} color={theme.subtitles} />
+                    <Text style={[styles.compactStepsText, { color: theme.subtitles }]}>
+                      Steps
+                    </Text>
+                  </View>
+                  <Text style={[styles.compactStepsValue, { color: theme.text }]}>
+                    +{steps}
+                  </Text>
+                </View>
 
-              <Text style={[styles.cardLabel, { color: theme.subtitles }]}>
-                Calories burned 🔥
-              </Text>
+                {/* Water Card */}
+                <View style={[styles.compactWaterCard, { backgroundColor: theme.cards }]}>
+                  <View style={styles.compactWaterHeader}>
+                    <Ionicons name="water" size={24} color="#5B9BD5" />
+                    <View style={styles.compactWaterInfo}>
+                      <Text style={[styles.compactWaterTitle, { color: theme.text }]}>
+                        Water
+                      </Text>
+                      <Text style={[styles.compactWaterValue, { color: theme.text }]}>
+                        {waterIntake * 8} fl oz ({waterIntake} cups)
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.compactWaterButtons}>
+                    <Pressable
+                      style={[styles.compactWaterButton, { backgroundColor: theme.background }]}
+                      onPress={decrementWater}
+                    >
+                      <Ionicons name="remove" size={20} color={theme.text} />
+                    </Pressable>
+                    <Pressable
+                      style={[styles.compactWaterButton, { backgroundColor: theme.background }]}
+                      onPress={incrementWater}
+                    >
+                      <Ionicons name="add" size={20} color={theme.text} />
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
             </View>
+          </ScrollView>
 
-            <CircularProgress
-              value={Math.min(burned, exerciseGoal)}
-              activeStrokeWidth={14}
-              inActiveStrokeWidth={10}
-              inActiveStrokeOpacity={0.2}
-              radius={60}
-              duration={1000}
-              maxValue={exerciseGoal}
-              activeStrokeColor={theme.chart}
-              inActiveStrokeColor={theme.inactivechart}
-            />
+          {/* Page Indicators */}
+          <View style={styles.pageIndicatorContainer}>
+            {[0, 1].map((page) => (
+              <View
+                key={page}
+                style={[
+                  styles.pageIndicator,
+                  {
+                    backgroundColor:
+                      currentPage === page
+                        ? theme.text
+                        : theme.subtitles,
+                    opacity: currentPage === page ? 1 : 0.3,
+                  },
+                ]}
+              />
+            ))}
           </View>
+        </View>
 
-          {/* Quick Actions Section */}
+        {/* Quick Actions Section */}
+        <View style={styles.contentSection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
 
           {/* Add Food Button */}
@@ -248,7 +334,7 @@ export default function Home() {
                   No food logged today
                 </Text>
                 <Text style={[styles.emptyStateSubtext, { color: theme.subtitles }]}>
-                  Tap &ldquo;Add Food&rdquo; to start tracking
+                  Tap "Add Food" to start tracking
                 </Text>
               </View>
             ) : (
@@ -325,7 +411,7 @@ export default function Home() {
                   No trainings logged today
                 </Text>
                 <Text style={[styles.emptyStateSubtext, { color: theme.subtitles }]}>
-                  Tap &ldquo;Add Training&rdquo; to log a workout
+                  Tap "Add Training" to log a workout
                 </Text>
               </View>
             ) : (
@@ -374,10 +460,181 @@ const styles = StyleSheet.create({
   fullScreen: {
     flex: 1,
   },
+  mainContent: {
+    flex: 1,
+  },
+  mainContentContainer: {
+    paddingBottom: 20,
+  },
+  contentSection: {
+    paddingHorizontal: 20,
+  },
+  topScrollContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  horizontalScroll: {
+    flexGrow: 0,
+  },
+  topPage: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  topPageContent: {
+    gap: 12,
+  },
+  pageIndicatorContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: 8,
+  },
+  pageIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  caloriesCompactCard: {
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  compactCardValue: {
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  compactCardLabel: {
+    fontSize: 16,
+    marginTop: 4,
+  },
+  compactCardCircle: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  compactCardIcon: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  compactMacroRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginHorizontal: -4,
+  },
+  compactMacroCard: {
+    borderRadius: 16,
+    padding: 12,
+    flex: 1,
+    marginHorizontal: 4,
+    boxShadow:
+      "0 0px 5px hsla(0, 0%, 28%, 0.2), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 3px hsla(0, 0%, 28%, 0.15)",
+  },
+  compactMacroCircle: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+  },
+  compactMacroIcon: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  compactStepsCard: {
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  compactStepsMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+  },
+  compactStepsText: {
+    fontSize: 13,
+  },
+  compactStepsValue: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginTop: 4,
+  },
+  compactWaterCard: {
+    borderRadius: 20,
+    padding: 16,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  compactWaterHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  compactWaterInfo: {
+    flex: 1,
+  },
+  compactWaterTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  compactWaterValue: {
+    fontSize: 13,
+  },
+  compactWaterButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  compactWaterButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingVertical: 20,
+  },
+  caloriesMainCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 7,
+    boxShadow:
+      "0 0px 12px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 6px hsla(0, 0%, 28%, 0.2)",
+    justifyContent: "space-between",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  caloriesMainValue: {
+    fontSize: 48,
+    fontWeight: "700",
+  },
+  caloriesMainLabel: {
+    fontSize: 18,
+    marginTop: 4,
+  },
+  caloriesMainCircle: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  caloriesMainIcon: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
   },
   infoCard: {
     borderRadius: 20,
@@ -389,19 +646,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   moreInfoCard: {
-    borderRadius: 20,
-    padding: 14,
+    borderRadius: 24,
+    padding: 18,
     marginTop: 15,
     elevation: 5,
     flexDirection: "column",
     marginBottom: 9,
+    flex: 1,
+    marginHorizontal: 4,
     boxShadow:
       "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  macroCircleContainer: {
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+  },
+  macroIconContainer: {
+    position: "absolute",
+    justifyContent: "center",
+    alignItems: "center",
   },
   moreInfoCardRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
+    marginHorizontal: -4,
   },
   cardValue: {
     fontSize: 20,
@@ -594,5 +865,128 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     fontSize: 14,
     textAlign: "center",
+  },
+  twoColumnRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+    gap: 8,
+  },
+  smallCard: {
+    flex: 1,
+    borderRadius: 24,
+    padding: 18,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  smallCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12,
+  },
+  smallCardValue: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  smallCardLabel: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  smallCardMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
+  smallCardMetaText: {
+    fontSize: 13,
+  },
+  smallCardSteps: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  googleHealthConnect: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  googleHealthText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  waterCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 15,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  waterLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 16,
+  },
+  waterInfo: {
+    flex: 1,
+  },
+  waterTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  waterValue: {
+    fontSize: 15,
+  },
+  waterButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  waterButton: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  healthScoreCard: {
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 15,
+    boxShadow:
+      "0 0px 7px hsla(0, 0%, 28%, 0.23), 0 0px 0px hsla(0, 0%, 28%, 0.15), 0 0 4px hsla(0, 0%, 28%, 0.2)",
+  },
+  healthScoreHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  healthScoreTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  healthScoreValue: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  healthScoreBar: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  healthScoreProgress: {
+    height: "100%",
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+  },
+  healthScoreFeedback: {
+    fontSize: 15,
+    lineHeight: 22,
   },
 });

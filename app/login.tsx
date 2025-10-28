@@ -20,7 +20,6 @@ import colors from '../data/colors.json';
 
 const ZeuxIcon_dark = require('../assets/images/zeuxicon-black.png');
 const ZeuxIcon_light = require('../assets/images/zeuxicon-white.png');
-
 export default function Login() {
   const router = useRouter();
   const colorScheme = useColorScheme();

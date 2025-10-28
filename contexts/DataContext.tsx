@@ -27,12 +27,17 @@ interface DataContextType {
   trainings: TrainingEntry[];
   calorieGoal: number;
   exerciseGoal: number;
+  waterIntake: number;
+  waterGoal: number;
+  steps: number;
   addFood: (food: Omit<FoodEntry, 'id' | 'date'>) => void;
   addTraining: (training: Omit<TrainingEntry, 'id' | 'date'>) => void;
   getTodayFoods: () => FoodEntry[];
   getTodayTrainings: () => TrainingEntry[];
   getTodayCalories: () => { eaten: number; burned: number };
   getTodayMacros: () => { protein: number; carbs: number; fats: number };
+  incrementWater: () => void;
+  decrementWater: () => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -42,6 +47,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [trainings, setTrainings] = useState<TrainingEntry[]>([]);
   const [calorieGoal] = useState(2000);
   const [exerciseGoal] = useState(500);
+  const [waterIntake, setWaterIntake] = useState(0);
+  const [waterGoal] = useState(8); // 8 cups per day
+  const [steps] = useState(0);
 
   const getTodayDate = () => {
     return new Date().toLocaleDateString('en-US');
@@ -95,6 +103,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     return { protein, carbs, fats };
   };
 
+  const incrementWater = () => {
+    setWaterIntake(prev => prev + 1);
+  };
+
+  const decrementWater = () => {
+    setWaterIntake(prev => Math.max(0, prev - 1));
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -102,12 +118,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         trainings,
         calorieGoal,
         exerciseGoal,
+        waterIntake,
+        waterGoal,
+        steps,
         addFood,
         addTraining,
         getTodayFoods,
         getTodayTrainings,
         getTodayCalories,
         getTodayMacros,
+        incrementWater,
+        decrementWater,
       }}
     >
       {children}

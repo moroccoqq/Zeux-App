@@ -324,6 +324,27 @@ export default function Home() {
             </View>
           </Pressable>
 
+          {/* Workout Plans Button */}
+          <Pressable
+            style={[styles.actionButton, { backgroundColor: theme.buttons }]}
+            onPress={() => router.push("/WorkoutPlans")}
+          >
+            <View style={styles.actionContent}>
+              <View style={styles.actionLeft}>
+                <Ionicons name="calendar-outline" size={28} color={theme.text} />
+                <View style={styles.actionText}>
+                  <Text style={[styles.actionTitle, { color: theme.text }]}>
+                    Workout Plans
+                  </Text>
+                  <Text style={[styles.actionSubtitle, { color: theme.subtitles }]}>
+                    View weekly training schedule
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={theme.text} />
+            </View>
+          </Pressable>
+
           {/* Recent Food Section */}
           <View style={styles.recentSection}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Food</Text>

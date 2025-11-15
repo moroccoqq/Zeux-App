@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -116,7 +115,6 @@ const weeklyPlan: WorkoutDay[] = [
 ];
 
 export default function WorkoutPlans() {
-  const router = useRouter();
   const colorScheme = useColorScheme();
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [completedExercises, setCompletedExercises] = useState<{[key: string]: boolean}>({});
@@ -135,13 +133,15 @@ export default function WorkoutPlans() {
 
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (isTimerRunning && activeWorkout) {
       interval = setInterval(() => {
         setWorkoutTime(prev => prev + 1);
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [isTimerRunning, activeWorkout]);
 
   const toggleDay = (day: string) => {

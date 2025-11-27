@@ -18,6 +18,7 @@ import CircularProgress from "react-native-circular-progress-indicator";
 import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "../../data/colors.json";
 import { useData } from "../../contexts/DataContext";
+import { useTabBar } from "../../contexts/TabBarContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -37,6 +38,7 @@ export default function Home() {
   const colorScheme = useColorScheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const { contentBottomPadding } = useTabBar();
   const {
     getTodayFoods,
     getTodayTrainings,
@@ -138,7 +140,7 @@ export default function Home() {
   return (
     <SafeAreaView
       style={[styles.fullScreen, { backgroundColor: theme.background }]}
-      edges={["left", "right", "bottom"]} // ✅ фикс: игнорируем верхний safe area
+      edges={["left", "right"]} // No bottom edge for floating tab bar
     >
       <StatusBar
         backgroundColor={theme.background}
@@ -147,7 +149,7 @@ export default function Home() {
 
       <ScrollView
         style={styles.mainContent}
-        contentContainerStyle={styles.mainContentContainer}
+        contentContainerStyle={[styles.mainContentContainer, { paddingBottom: contentBottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Horizontal Scrollable Top Section */}
@@ -355,7 +357,7 @@ export default function Home() {
                   No food logged today
                 </Text>
                 <Text style={[styles.emptyStateSubtext, { color: theme.subtitles }]}>
-                  Tap "Add Food" to start tracking
+                  Tap &quot;Add Food&quot; to start tracking
                 </Text>
               </View>
             ) : (
@@ -432,7 +434,7 @@ export default function Home() {
                   No trainings logged today
                 </Text>
                 <Text style={[styles.emptyStateSubtext, { color: theme.subtitles }]}>
-                  Tap "Add Training" to log a workout
+                  Tap &quot;Add Training&quot; to log a workout
                 </Text>
               </View>
             ) : (
@@ -485,7 +487,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainContentContainer: {
-    paddingBottom: 20,
+    // paddingBottom set dynamically via useTabBar hook
   },
   contentSection: {
     paddingHorizontal: 20,

@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Zeux-App is a React Native mobile application built with Expo that helps users track their food intake and create workout plans. The app features AI-powered food tracking and training generation capabilities.
 
 **Tech Stack:**
-- React Native 0.79.4 with React 19.0.0
-- Expo SDK ~53.0.15
-- Expo Router 5.x for file-based navigation
+- React Native 0.81.5 with React 19.1.0
+- Expo SDK ~54.0.0
+- Expo Router 6.x for file-based navigation
 - TypeScript with strict mode enabled
-- React Native Reanimated for animations
+- React Native Reanimated 4.x for animations
 - React Native Chart Kit for data visualization
 
 ## Development Commands
@@ -109,3 +109,4 @@ TypeScript is configured with path alias `@/*` mapping to the root directory. Ho
 ## Project Naming Note
 
 The project has references to both "Fit-AI" (legacy) and "Zeux-App" (current). You may see "fit-ai" in package.json and app.json. The current project name is Zeux-App.
+- use agents

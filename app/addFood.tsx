@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Stack, useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -17,6 +18,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import colors from '../data/colors.json';
 import { useData } from '../contexts/DataContext';
+import { analyzeFoodImage, validateApiKey } from '../services/foodAnalysisService';
+import Constants from 'expo-constants';
 
 export default function AddFood() {
   const router = useRouter();
@@ -28,6 +31,7 @@ export default function AddFood() {
   const [facing, setFacing] = useState<CameraType>('back');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Form state
   const [foodName, setFoodName] = useState('');
@@ -44,6 +48,52 @@ export default function AddFood() {
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
+  const analyzeImage = async (imageUri: string) => {
+    const apiKey = Constants.expoConfig?.extra?.EXPO_PUBLIC_ANTHROPIC_API_KEY ||
+                   process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY;
+
+    if (!validateApiKey(apiKey)) {
+      Alert.alert(
+        'API Key Missing',
+        'Please add your Anthropic API key to .env file:\n\nEXPO_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...\n\nGet your key from: https://console.anthropic.com/',
+        [
+          {
+            text: 'Skip AI Analysis',
+            style: 'cancel',
+          },
+        ]
+      );
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeFoodImage(imageUri, apiKey);
+
+      // Populate form with AI results
+      setFoodName(result.foodName);
+      setCalories(result.calories.toString());
+      setProtein(result.protein.toString());
+      setCarbs(result.carbs.toString());
+      setFats(result.fats.toString());
+
+      Alert.alert(
+        'Food Detected!',
+        `${result.foodName}\n${result.portionSize || ''}\nConfidence: ${result.confidence || 'N/A'}`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Analysis error:', error);
+      Alert.alert(
+        'Analysis Failed',
+        'Could not analyze the food image. You can still enter details manually.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
@@ -51,6 +101,8 @@ export default function AddFood() {
         if (photo) {
           setCapturedImage(photo.uri);
           setShowCamera(false);
+          // Analyze the captured image
+          await analyzeImage(photo.uri);
         }
       } catch {
         Alert.alert('Error', 'Failed to take picture');
@@ -69,6 +121,8 @@ export default function AddFood() {
     if (!result.canceled && result.assets[0]) {
       setCapturedImage(result.assets[0].uri);
       setShowCamera(false);
+      // Analyze the selected image
+      await analyzeImage(result.assets[0].uri);
     }
   };
 
@@ -123,6 +177,12 @@ export default function AddFood() {
   const retakePhoto = () => {
     setCapturedImage(null);
     setShowCamera(false);
+    // Clear form when retaking photo
+    setFoodName('');
+    setCalories('');
+    setProtein('');
+    setCarbs('');
+    setFats('');
   };
 
   // Camera View
@@ -167,6 +227,14 @@ export default function AddFood() {
           headerTintColor: theme.text,
           headerTitle: "",
           headerShadowVisible: false,
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              style={{ marginLeft: 10, padding: 8 }}
+            >
+              <Ionicons name="arrow-back" size={24} color={theme.text} />
+            </Pressable>
+          ),
           headerRight: () => (
             <Text style={{ color: theme.text, fontSize: 21, fontWeight: '600', marginRight: 10 }}>
               Add Food
@@ -177,6 +245,21 @@ export default function AddFood() {
 
       <SafeAreaView style={[styles.fullScreen, { backgroundColor: theme.background }]}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          {/* AI Analysis Loading Overlay */}
+          {isAnalyzing && (
+            <View style={styles.loadingOverlay}>
+              <View style={[styles.loadingBox, { backgroundColor: theme.cards }]}>
+                <ActivityIndicator size="large" color={theme.text} />
+                <Text style={[styles.loadingText, { color: theme.text }]}>
+                  Analyzing food...
+                </Text>
+                <Text style={[styles.loadingSubtext, { color: theme.subtitles }]}>
+                  AI is detecting nutritional information
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Image Section */}
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Food Photo</Text>
           <View style={[styles.imageContainer, { backgroundColor: theme.cards }]}>
@@ -451,5 +534,38 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: '#fff',
+  },
+  // Loading overlay styles
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingBox: {
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    minWidth: 250,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

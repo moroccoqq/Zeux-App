@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import colors from "../../data/colors.json";
+import { useTabBar } from "../../contexts/TabBarContext";
 
 interface SettingsSectionProps {
   title: string;
@@ -89,6 +90,7 @@ export default function Settings() {
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
   const themeColors = colors[colorScheme];
+  const { contentBottomPadding } = useTabBar();
 
   const [notifications, setNotifications] = useState(true);
 
@@ -126,14 +128,14 @@ export default function Settings() {
 
   return (
     <SafeAreaView
-      edges={["left", "right", "bottom"]}
+      edges={["left", "right"]} // No bottom edge for floating tab bar
       style={[styles.container, { backgroundColor: themeColors.background }]}
     >
       <StatusBar
         backgroundColor={themeColors.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.scrollContent, { paddingBottom: contentBottomPadding }]}>
         <SettingsSection title="Account">
           <SettingsItem
             icon="person-outline"
@@ -183,6 +185,9 @@ export default function Settings() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollView: { flex: 1 },
+  scrollContent: {
+    // paddingBottom set dynamically via useTabBar hook
+  },
   section: {
     marginBottom: 24,
     paddingHorizontal: 16,

@@ -5,3 +5,7 @@
 expo-env.d.ts
 # @end expo-cli
 .expo/
+
+# Environment variables
+.env
+.env.local

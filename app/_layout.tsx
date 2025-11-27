@@ -20,7 +20,7 @@ export default function RootLayout() {
       <Stack.Screen
         name="addFood"
         options={{
-          headerShown: false,
+          headerShown: true,
           presentation: "modal",
         }}
       />

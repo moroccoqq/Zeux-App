@@ -1,6 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
-  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,144 +8,43 @@ import {
   View,
   Modal,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInRight,
+  SlideOutLeft,
+  SlideInLeft,
+  SlideOutRight,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  useSharedValue,
+} from "react-native-reanimated";
 import colors from "../../data/colors.json";
-
-type Training = {
-  type: string;
-  duration: string;
-  kcal: number;
-  date?: string;
-};
-
-type DayData = {
-  calories: number;
-  burned: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  trainings: Training[];
-};
-
-type WeekData = {
-  [key: string]: DayData;
-};
-
-// Sample data - replace with real data from your backend/storage
-const weekData: WeekData = {
-  Mon: {
-    calories: 2100,
-    burned: 450,
-    protein: 150,
-    carbs: 200,
-    fat: 70,
-    trainings: [
-      { type: "💪 Strength", duration: "45 min", kcal: 350 },
-      { type: "🏃 Run", duration: "3 km", kcal: 100 },
-    ],
-  },
-  Tue: {
-    calories: 1950,
-    burned: 300,
-    protein: 140,
-    carbs: 180,
-    fat: 65,
-    trainings: [{ type: "🧘 Yoga", duration: "30 min", kcal: 150 }],
-  },
-  Wed: {
-    calories: 2200,
-    burned: 500,
-    protein: 160,
-    carbs: 220,
-    fat: 75,
-    trainings: [
-      { type: "🏋️ Weightlifting", duration: "50 min", kcal: 400 },
-      { type: "🚴 Cycling", duration: "20 min", kcal: 100 },
-    ],
-  },
-  Thu: {
-    calories: 1800,
-    burned: 250,
-    protein: 130,
-    carbs: 170,
-    fat: 60,
-    trainings: [{ type: "🏊 Swimming", duration: "30 min", kcal: 250 }],
-  },
-  Fri: {
-    calories: 2300,
-    burned: 600,
-    protein: 170,
-    carbs: 230,
-    fat: 80,
-    trainings: [
-      { type: "💪 Strength", duration: "60 min", kcal: 450 },
-      { type: "🏃 HIIT", duration: "15 min", kcal: 150 },
-    ],
-  },
-  Sat: {
-    calories: 2500,
-    burned: 700,
-    protein: 180,
-    carbs: 250,
-    fat: 90,
-    trainings: [
-      { type: "🚴 Cycling", duration: "90 min", kcal: 500 },
-      { type: "🧘 Yoga", duration: "40 min", kcal: 200 },
-    ],
-  },
-  Sun: {
-    calories: 1900,
-    burned: 200,
-    protein: 135,
-    carbs: 175,
-    fat: 65,
-    trainings: [{ type: "🚶 Walking", duration: "60 min", kcal: 200 }],
-  },
-};
-
-const monthData = {
-  week1: {
-    avgCalories: 2050,
-    avgBurned: 420,
-    totalTrainings: 12,
-    avgProtein: 145,
-    avgCarbs: 195,
-    avgFat: 70,
-  },
-  week2: {
-    avgCalories: 2150,
-    avgBurned: 480,
-    totalTrainings: 14,
-    avgProtein: 155,
-    avgCarbs: 210,
-    avgFat: 75,
-  },
-  week3: {
-    avgCalories: 2000,
-    avgBurned: 390,
-    totalTrainings: 10,
-    avgProtein: 140,
-    avgCarbs: 185,
-    avgFat: 68,
-  },
-  week4: {
-    avgCalories: 2200,
-    avgBurned: 510,
-    totalTrainings: 15,
-    avgProtein: 160,
-    avgCarbs: 215,
-    avgFat: 78,
-  },
-};
+import { useData } from "../../contexts/DataContext";
+import { useTabBar } from "../../contexts/TabBarContext";
 
 export default function Analytics() {
   const colorScheme = useColorScheme();
+  const { contentBottomPadding } = useTabBar();
   const [selectedPeriod, setSelectedPeriod] = useState<"week" | "month">("week");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTab, setModalTab] = useState<"trainings" | "meals">("trainings");
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  const [weekData, setWeekData] = useState<any>({});
+  const [selectedWeekInMonth, setSelectedWeekInMonth] = useState<number>(0); // 0-3 for 4 weeks
+  const [weekTransitionDirection, setWeekTransitionDirection] = useState<"left" | "right">("right");
+
+  const { getDateRangeData, getFoodsByDate, getTrainingsByDate } = useData();
+
+  // Animated values for smooth transitions
+  const contentOpacity = useSharedValue(1);
+  const contentTranslateY = useSharedValue(0);
 
   const theme = useMemo(() => {
     return colorScheme === "dark" ? colors.dark : colors.light;
@@ -154,180 +52,400 @@ export default function Analytics() {
 
   const calorieColors = colors.calorietypes;
 
+  // Get date range based on selected period
+  const getDateRange = (period: "week" | "month") => {
+    const end = new Date();
+    const start = new Date();
+
+    if (period === "week") {
+      start.setDate(end.getDate() - 6); // Last 7 days
+    } else {
+      start.setDate(end.getDate() - 29); // Last 30 days
+    }
+
+    return {
+      startDate: start.toLocaleDateString('en-US'),
+      endDate: end.toLocaleDateString('en-US'),
+    };
+  };
+
+  // Load data for the selected period
+  useEffect(() => {
+    loadPeriodData();
+  }, [selectedPeriod]);
+
+  // Reset selected week when switching periods
+  useEffect(() => {
+    setSelectedWeekInMonth(0);
+  }, [selectedPeriod]);
+
+  const loadPeriodData = async () => {
+    setIsLoadingData(true);
+    try {
+      const { startDate, endDate } = getDateRange(selectedPeriod);
+      const data = await getDateRangeData(startDate, endDate);
+
+      // Organize data by day
+      const dayMap: any = {};
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      // Initialize days
+      for (let i = 0; i < (selectedPeriod === 'week' ? 7 : 30); i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-US');
+        const dayName = selectedPeriod === 'week'
+          ? daysOfWeek[date.getDay()]
+          : date.getDate().toString();
+
+        dayMap[dayName] = {
+          date: dateStr,
+          calories: 0,
+          burned: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          trainings: [],
+        };
+      }
+
+      // Fill in actual data
+      data.foods.forEach(food => {
+        const date = new Date(food.date);
+        const dayName = selectedPeriod === 'week'
+          ? daysOfWeek[date.getDay()]
+          : date.getDate().toString();
+
+        if (dayMap[dayName]) {
+          dayMap[dayName].calories += food.calories;
+          dayMap[dayName].protein += food.protein;
+          dayMap[dayName].carbs += food.carbs;
+          dayMap[dayName].fat += food.fats;
+        }
+      });
+
+      data.trainings.forEach(training => {
+        const date = new Date(training.date);
+        const dayName = selectedPeriod === 'week'
+          ? daysOfWeek[date.getDay()]
+          : date.getDate().toString();
+
+        if (dayMap[dayName]) {
+          dayMap[dayName].burned += training.calories;
+          dayMap[dayName].trainings.push({
+            type: training.name,
+            duration: training.duration,
+            kcal: training.calories,
+          });
+        }
+      });
+
+      setWeekData(dayMap);
+    } catch (error) {
+      console.error('Error loading period data:', error);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
   const handleDayPress = (day: string) => {
     setSelectedDay(day);
     setModalTab("trainings");
     setModalVisible(true);
   };
 
-  // Calculate monthly totals
-  const monthTotals = useMemo(() => {
-    const weeks = Object.values(monthData);
-    const totalTrainings = weeks.reduce((sum, week) => sum + week.totalTrainings, 0);
-    const avgCalories = Math.round(
-      weeks.reduce((sum, week) => sum + week.avgCalories, 0) / 4
-    );
-    const avgBurned = Math.round(
-      weeks.reduce((sum, week) => sum + week.avgBurned, 0) / 4
-    );
-    const avgProtein = Math.round(
-      weeks.reduce((sum, week) => sum + week.avgProtein, 0) / 4
-    );
-    const avgCarbs = Math.round(
-      weeks.reduce((sum, week) => sum + week.avgCarbs, 0) / 4
-    );
-    const avgFat = Math.round(
-      weeks.reduce((sum, week) => sum + week.avgFat, 0) / 4
-    );
+  // Handler for week selection with animation direction
+  const handleWeekChange = (newWeek: number) => {
+    if (newWeek !== selectedWeekInMonth) {
+      setWeekTransitionDirection(newWeek > selectedWeekInMonth ? "right" : "left");
+      setSelectedWeekInMonth(newWeek);
+    }
+  };
+
+  // Calculate totals for the period
+  const periodTotals = useMemo(() => {
+    const days = Object.values(weekData);
+    const totalCalories = days.reduce((sum: number, day: any) => sum + day.calories, 0);
+    const totalBurned = days.reduce((sum: number, day: any) => sum + day.burned, 0);
+    const avgCalories = days.length > 0 ? Math.round(totalCalories / days.length) : 0;
+    const avgBurned = days.length > 0 ? Math.round(totalBurned / days.length) : 0;
 
     return {
-      totalTrainings,
+      totalCalories,
+      totalBurned,
       avgCalories,
       avgBurned,
-      avgProtein,
-      avgCarbs,
-      avgFat,
-      totalCaloriesBurned: avgBurned * 30,
     };
-  }, []);
+  }, [weekData]);
 
+  // Calculate totals for selected week in month view
+  const selectedWeekTotals = useMemo(() => {
+    const allDays = Object.keys(weekData);
+    const weeksData = [
+      allDays.slice(0, 8),
+      allDays.slice(8, 15),
+      allDays.slice(15, 22),
+      allDays.slice(22, 30),
+    ];
+
+    const currentWeekDays = weeksData[selectedWeekInMonth] || [];
+    const weekDays = currentWeekDays.map(day => weekData[day]).filter(Boolean);
+
+    const totalCalories = weekDays.reduce((sum: number, day: any) => sum + day.calories, 0);
+    const totalBurned = weekDays.reduce((sum: number, day: any) => sum + day.burned, 0);
+    const avgCalories = weekDays.length > 0 ? Math.round(totalCalories / weekDays.length) : 0;
+    const avgBurned = weekDays.length > 0 ? Math.round(totalBurned / weekDays.length) : 0;
+
+    return {
+      totalCalories,
+      totalBurned,
+      avgCalories,
+      avgBurned,
+      currentWeekDays,
+      weeksData,
+    };
+  }, [weekData, selectedWeekInMonth]);
 
   const renderWeekView = () => {
     const days = Object.keys(weekData);
-    const totalCalories = days.reduce((sum, day) => sum + weekData[day].calories, 0);
-    const totalBurned = days.reduce((sum, day) => sum + weekData[day].burned, 0);
+
+    if (isLoadingData) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.text} />
+          <Text style={[styles.loadingText, { color: theme.subtitles }]}>Loading data...</Text>
+        </View>
+      );
+    }
 
     return (
-      <View style={styles.mainContentWrapper}>
-        {/* Calories Overview */}
-        <View style={styles.headerStatsRow}>
-          <View style={[styles.statCardLarge, { backgroundColor: theme.cards }]}>
-            <Text style={[styles.statValueLarge, { color: theme.text }]}>
-              {totalCalories.toLocaleString()}
-            </Text>
-            <Text style={[styles.statLabelLarge, { color: theme.subtitles }]}>
-              Total Calories Eaten
-            </Text>
-          </View>
-          <View style={[styles.statCardLarge, { backgroundColor: theme.cards }]}>
-            <Text style={[styles.statValueLarge, { color: calorieColors.protein }]}>
-              {totalBurned.toLocaleString()}
-            </Text>
-            <Text style={[styles.statLabelLarge, { color: theme.subtitles }]}>
-              Calories Burned
-            </Text>
-          </View>
-        </View>
-
-        {/* Days */}
-        <Text style={[styles.sectionHeader, { color: theme.text }]}>Days</Text>
-        {days.map((day, idx) => {
-          const dayData = weekData[day];
-          const hasData = dayData.calories > 0;
-
-          if (!hasData) return null;
-
-          return (
-            <TouchableOpacity
-              key={idx}
-              style={[styles.daySimpleCard, { backgroundColor: theme.cards }]}
-              onPress={() => handleDayPress(day)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.daySimpleText, { color: theme.text }]}>
-                {day}
+      <Animated.View
+        style={styles.mainContentWrapper}
+        entering={FadeIn.duration(400)}
+        exiting={FadeOut.duration(200)}
+      >
+        {/* Hero Stats Card */}
+        <Animated.View
+          style={[styles.heroCard, { backgroundColor: theme.cards }]}
+          entering={FadeIn.delay(100).duration(500).springify()}
+        >
+          <View style={styles.heroHeader}>
+            <View style={styles.heroStatGroup}>
+              <Text style={[styles.heroValue, { color: theme.text }]}>
+                {periodTotals.avgCalories}
               </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.subtitles}
-              />
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+              <Text style={[styles.heroLabel, { color: theme.subtitles }]}>
+                avg daily
+              </Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStatGroup}>
+              <Text style={[styles.heroValue, { color: calorieColors.protein }]}>
+                {periodTotals.avgBurned}
+              </Text>
+              <Text style={[styles.heroLabel, { color: theme.subtitles }]}>
+                avg burned
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.heroFooter, { borderTopColor: theme.subtitles + "20" }]}>
+            <Text style={[styles.heroFooterText, { color: theme.subtitles }]}>
+              {periodTotals.totalCalories.toLocaleString()} total this week
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* Days List */}
+        <View style={styles.daysSection}>
+          {days.map((day, idx) => {
+            const dayData = weekData[day];
+            const hasData = dayData.calories > 0 || dayData.trainings.length > 0;
+
+            return (
+              <Animated.View
+                key={`week-${day}-${idx}`}
+                entering={FadeIn.delay(150 + idx * 50).duration(400).springify()}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.dayCard,
+                    { backgroundColor: theme.cards },
+                    !hasData && { opacity: 0.5 },
+                  ]}
+                  onPress={() => hasData && handleDayPress(day)}
+                  activeOpacity={0.6}
+                  disabled={!hasData}
+                >
+                  <View style={styles.dayCardContent}>
+                    <View style={styles.dayCardLeft}>
+                      <Text style={[styles.dayCardDay, { color: theme.text }]}>
+                        {day}
+                      </Text>
+                      <Text style={[styles.dayCardSub, { color: theme.subtitles }]}>
+                        {dayData.trainings.length} workout{dayData.trainings.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.dayCardRight}>
+                      <Text style={[styles.dayCardValue, { color: theme.text }]}>
+                        {dayData.calories}
+                      </Text>
+                      <Text style={[styles.dayCardLabel, { color: theme.subtitles }]}>
+                        kcal
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </View>
+      </Animated.View>
     );
   };
 
   const renderMonthView = () => {
-    // Calculate monthly totals from week data
-    const totalMonthCalories = monthTotals.avgCalories * 30;
-    const totalMonthBurned = monthTotals.avgBurned * 30;
+    const { currentWeekDays, avgCalories, avgBurned, totalCalories } = selectedWeekTotals;
 
-    // Generate 31 days for the month
-    const monthDays = Array.from({ length: 31 }, (_, i) => i + 1);
+    if (isLoadingData) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.text} />
+          <Text style={[styles.loadingText, { color: theme.subtitles }]}>Loading data...</Text>
+        </View>
+      );
+    }
+
+    // Determine slide animation direction based on week navigation
+    const slideIn = weekTransitionDirection === "right" ? SlideInRight : SlideInLeft;
+    const slideOut = weekTransitionDirection === "right" ? SlideOutLeft : SlideOutRight;
 
     return (
-      <View style={styles.mainContentWrapper}>
-        {/* Calories Overview */}
-        <View style={styles.headerStatsRow}>
-          <View style={[styles.statCardLarge, { backgroundColor: theme.cards }]}>
-            <Text style={[styles.statValueLarge, { color: theme.text }]}>
-              {totalMonthCalories.toLocaleString()}
-            </Text>
-            <Text style={[styles.statLabelLarge, { color: theme.subtitles }]}>
-              Total Calories Eaten
-            </Text>
-          </View>
-          <View style={[styles.statCardLarge, { backgroundColor: theme.cards }]}>
-            <Text style={[styles.statValueLarge, { color: calorieColors.protein }]}>
-              {totalMonthBurned.toLocaleString()}
-            </Text>
-            <Text style={[styles.statLabelLarge, { color: theme.subtitles }]}>
-              Calories Burned
-            </Text>
-          </View>
-        </View>
-
-        {/* Days */}
-        <Text style={[styles.sectionHeader, { color: theme.text }]}>Days</Text>
-        {monthDays.map((dayNum, idx) => {
-          // For demo purposes, use sample data from weekData cycling through
-          const dayNames = Object.keys(weekData);
-          const dayKey = dayNames[dayNum % 7];
-          const dayData = weekData[dayKey];
-
-          // Show all days regardless of data
-          const hasData = dayData.calories > 0;
-
-          return (
+      <Animated.View
+        style={styles.mainContentWrapper}
+        entering={FadeIn.duration(400)}
+        exiting={FadeOut.duration(200)}
+      >
+        {/* Week Selector */}
+        <Animated.View
+          style={[styles.weekSelector, { backgroundColor: theme.cards }]}
+          entering={FadeIn.delay(100).duration(500).springify()}
+        >
+          {[0, 1, 2, 3].map((weekNum) => (
             <TouchableOpacity
-              key={idx}
+              key={weekNum}
+              onPress={() => handleWeekChange(weekNum)}
               style={[
-                styles.daySimpleCard,
-                { backgroundColor: theme.cards },
-                !hasData && styles.daySimpleCardEmpty,
+                styles.weekButton,
+                selectedWeekInMonth === weekNum && { backgroundColor: theme.background },
               ]}
-              onPress={() => hasData && handleDayPress(dayKey)}
-              activeOpacity={hasData ? 0.7 : 1}
-              disabled={!hasData}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
-                  styles.daySimpleText,
-                  { color: hasData ? theme.text : theme.subtitles },
+                  styles.weekButtonText,
+                  { color: theme.subtitles },
+                  selectedWeekInMonth === weekNum && { color: theme.text, fontWeight: "600" },
                 ]}
               >
-                Day {dayNum}
+                W{weekNum + 1}
               </Text>
-              {hasData && (
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color={theme.subtitles}
-                />
-              )}
             </TouchableOpacity>
-          );
-        })}
-      </View>
+          ))}
+        </Animated.View>
+
+        {/* Hero Stats Card */}
+        <Animated.View
+          key={`stats-${selectedWeekInMonth}`}
+          style={[styles.heroCard, { backgroundColor: theme.cards }]}
+          entering={slideIn.duration(300).springify()}
+          exiting={slideOut.duration(200)}
+        >
+          <View style={styles.heroHeader}>
+            <View style={styles.heroStatGroup}>
+              <Text style={[styles.heroValue, { color: theme.text }]}>
+                {avgCalories}
+              </Text>
+              <Text style={[styles.heroLabel, { color: theme.subtitles }]}>
+                avg daily
+              </Text>
+            </View>
+            <View style={styles.heroDivider} />
+            <View style={styles.heroStatGroup}>
+              <Text style={[styles.heroValue, { color: calorieColors.protein }]}>
+                {avgBurned}
+              </Text>
+              <Text style={[styles.heroLabel, { color: theme.subtitles }]}>
+                avg burned
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.heroFooter, { borderTopColor: theme.subtitles + "20" }]}>
+            <Text style={[styles.heroFooterText, { color: theme.subtitles }]}>
+              {totalCalories.toLocaleString()} total this week
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* Days List (similar to week view) */}
+        <Animated.View
+          key={`days-${selectedWeekInMonth}`}
+          style={styles.daysSection}
+          entering={slideIn.duration(300).springify()}
+          exiting={slideOut.duration(200)}
+        >
+          {currentWeekDays.map((dayNum, idx) => {
+            const dayData = weekData[dayNum];
+            if (!dayData) return null;
+
+            const hasData = dayData.calories > 0 || dayData.trainings.length > 0;
+
+            return (
+              <Animated.View
+                key={`month-${dayNum}-${idx}`}
+                entering={FadeIn.delay(50 + idx * 40).duration(400).springify()}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.dayCard,
+                    { backgroundColor: theme.cards },
+                    !hasData && { opacity: 0.5 },
+                  ]}
+                  onPress={() => hasData && handleDayPress(dayNum)}
+                  activeOpacity={0.6}
+                  disabled={!hasData}
+                >
+                  <View style={styles.dayCardContent}>
+                    <View style={styles.dayCardLeft}>
+                      <Text style={[styles.dayCardDay, { color: theme.text }]}>
+                        Day {dayNum}
+                      </Text>
+                      <Text style={[styles.dayCardSub, { color: theme.subtitles }]}>
+                        {dayData.trainings.length} workout{dayData.trainings.length !== 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                    <View style={styles.dayCardRight}>
+                      <Text style={[styles.dayCardValue, { color: theme.text }]}>
+                        {dayData.calories}
+                      </Text>
+                      <Text style={[styles.dayCardLabel, { color: theme.subtitles }]}>
+                        kcal
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </Animated.View>
+      </Animated.View>
     );
   };
 
   const renderDayModal = () => {
-    if (!selectedDay) return null;
+    if (!selectedDay || !weekData[selectedDay]) return null;
 
     const dayData = weekData[selectedDay];
+    const dayFoods = getFoodsByDate(dayData.date);
 
     return (
       <Modal
@@ -340,56 +458,58 @@ export default function Analytics() {
           style={[styles.modalFullScreen, { backgroundColor: theme.background }]}
           edges={["top", "left", "right", "bottom"]}
         >
-          {/* Header */}
+          {/* Minimalist Header */}
           <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
-              {selectedDay}
-            </Text>
+            <View>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                {selectedDay}
+              </Text>
+              <Text style={[styles.modalSubtitle, { color: theme.subtitles }]}>
+                {dayData.calories} kcal • {dayData.trainings.length} workouts
+              </Text>
+            </View>
             <TouchableOpacity
               onPress={() => setModalVisible(false)}
               style={styles.closeButton}
+              activeOpacity={0.6}
             >
-              <Ionicons name="close-circle" size={32} color={theme.subtitles} />
+              <Ionicons name="close" size={28} color={theme.text} />
             </TouchableOpacity>
           </View>
 
-          {/* Tabs */}
+          {/* Simplified Tabs */}
           <View style={styles.modalTabs}>
             <TouchableOpacity
-              style={[
-                styles.modalTab,
-                modalTab === "trainings" && styles.modalTabActive,
-              ]}
+              style={[styles.modalTab]}
               onPress={() => setModalTab("trainings")}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
                   styles.modalTabText,
-                  { color: theme.text },
-                  modalTab === "trainings" && styles.modalTabTextActive,
+                  { color: theme.subtitles },
+                  modalTab === "trainings" && { color: theme.text, fontWeight: "700" },
                 ]}
               >
-                Trainings
+                Workouts
               </Text>
               {modalTab === "trainings" && (
                 <View style={[styles.modalTabIndicator, { backgroundColor: theme.text }]} />
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.modalTab,
-                modalTab === "meals" && styles.modalTabActive,
-              ]}
+              style={[styles.modalTab]}
               onPress={() => setModalTab("meals")}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
                   styles.modalTabText,
-                  { color: theme.text },
-                  modalTab === "meals" && styles.modalTabTextActive,
+                  { color: theme.subtitles },
+                  modalTab === "meals" && { color: theme.text, fontWeight: "700" },
                 ]}
               >
-                Meals
+                Nutrition
               </Text>
               {modalTab === "meals" && (
                 <View style={[styles.modalTabIndicator, { backgroundColor: theme.text }]} />
@@ -402,112 +522,128 @@ export default function Analytics() {
                 <>
                   {/* Trainings Content */}
                   {dayData.trainings.length > 0 ? (
-                    dayData.trainings.map((training, idx) => (
-                      <View key={idx} style={[styles.modalCard, { backgroundColor: theme.cards }]}>
-                        <View style={styles.trainingItem}>
-                          <Text style={[styles.trainingType, { color: theme.text }]}>
-                            {training.type}
-                          </Text>
-                          <View style={styles.trainingDetails}>
-                            <View style={styles.trainingDetailItem}>
-                              <Ionicons name="time-outline" size={18} color={theme.subtitles} />
-                              <Text style={[styles.trainingDetailText, { color: theme.text }]}>
-                                {training.duration}
-                              </Text>
-                            </View>
-                            <View style={styles.trainingDetailItem}>
-                              <Ionicons name="flame-outline" size={18} color={calorieColors.protein} />
-                              <Text style={[styles.trainingDetailText, { color: theme.text }]}>
-                                {training.kcal} cal
-                              </Text>
-                            </View>
+                    dayData.trainings.map((training: any, idx: number) => (
+                      <View key={idx} style={[styles.trainingCard, { backgroundColor: theme.cards }]}>
+                        <Text style={[styles.trainingCardType, { color: theme.text }]}>
+                          {training.type}
+                        </Text>
+                        <View style={styles.trainingCardStats}>
+                          <View style={styles.trainingCardStat}>
+                            <Ionicons name="time-outline" size={16} color={theme.subtitles} />
+                            <Text style={[styles.trainingCardStatText, { color: theme.subtitles }]}>
+                              {training.duration}
+                            </Text>
+                          </View>
+                          <View style={styles.trainingCardStat}>
+                            <Ionicons name="flame-outline" size={16} color={calorieColors.protein} />
+                            <Text style={[styles.trainingCardStatText, { color: theme.subtitles }]}>
+                              {training.kcal} cal
+                            </Text>
                           </View>
                         </View>
                       </View>
                     ))
                   ) : (
-                    <View style={[styles.emptyCard, { backgroundColor: theme.cards }]}>
+                    <View style={[styles.emptyState]}>
+                      <Ionicons name="fitness-outline" size={48} color={theme.subtitles + "40"} />
                       <Text style={[styles.emptyText, { color: theme.subtitles }]}>
-                        No trainings on this day
+                        No workouts recorded
                       </Text>
                     </View>
                   )}
                 </>
               ) : (
                 <>
-                  {/* Meals Content */}
-                  <View style={[styles.modalCard, { backgroundColor: theme.cards }]}>
-                    <Text style={[styles.mealSectionTitle, { color: theme.text }]}>
-                      Calories
-                    </Text>
-                    <View style={styles.mealStatsRow}>
-                      <View style={styles.mealStatItem}>
-                        <Text style={[styles.mealStatValue, { color: theme.text }]}>
-                          {dayData.calories}
-                        </Text>
-                        <Text style={[styles.mealStatLabel, { color: theme.subtitles }]}>
-                          Consumed
-                        </Text>
-                      </View>
-                      <View style={styles.mealStatItem}>
-                        <Text style={[styles.mealStatValue, { color: calorieColors.protein }]}>
-                          {dayData.burned}
-                        </Text>
-                        <Text style={[styles.mealStatLabel, { color: theme.subtitles }]}>
-                          Burned
-                        </Text>
-                      </View>
-                      <View style={styles.mealStatItem}>
-                        <Text style={[styles.mealStatValue, { color: theme.text }]}>
-                          {dayData.calories - dayData.burned}
-                        </Text>
-                        <Text style={[styles.mealStatLabel, { color: theme.subtitles }]}>
-                          Net
-                        </Text>
-                      </View>
+                  {/* Nutrition Content */}
+                  <View style={[styles.nutritionGrid]}>
+                    <View style={[styles.nutritionCard, { backgroundColor: theme.cards }]}>
+                      <Text style={[styles.nutritionValue, { color: theme.text }]}>
+                        {dayData.calories}
+                      </Text>
+                      <Text style={[styles.nutritionLabel, { color: theme.subtitles }]}>
+                        consumed
+                      </Text>
+                    </View>
+                    <View style={[styles.nutritionCard, { backgroundColor: theme.cards }]}>
+                      <Text style={[styles.nutritionValue, { color: calorieColors.protein }]}>
+                        {dayData.burned}
+                      </Text>
+                      <Text style={[styles.nutritionLabel, { color: theme.subtitles }]}>
+                        burned
+                      </Text>
                     </View>
                   </View>
 
-                  <View style={[styles.modalCard, { backgroundColor: theme.cards }]}>
-                    <Text style={[styles.mealSectionTitle, { color: theme.text }]}>
-                      Macros
+                  <View style={[styles.macrosCard, { backgroundColor: theme.cards }]}>
+                    <Text style={[styles.macrosCardTitle, { color: theme.text }]}>
+                      Macronutrients
                     </Text>
-                    <View style={styles.macrosList}>
-                      <View style={styles.macrosListItem}>
-                        <View style={styles.macrosListLeft}>
-                          <View style={[styles.macroIndicator, { backgroundColor: calorieColors.protein }]} />
-                          <Text style={[styles.macrosListLabel, { color: theme.text }]}>
+                    <View style={styles.macrosCardList}>
+                      <View style={styles.macroRow}>
+                        <View style={styles.macroRowLeft}>
+                          <View style={[styles.macroRowDot, { backgroundColor: calorieColors.protein }]} />
+                          <Text style={[styles.macroRowLabel, { color: theme.subtitles }]}>
                             Protein
                           </Text>
                         </View>
-                        <Text style={[styles.macrosListValue, { color: theme.text }]}>
+                        <Text style={[styles.macroRowValue, { color: theme.text }]}>
                           {dayData.protein}g
                         </Text>
                       </View>
-                      <View style={styles.macrosListItem}>
-                        <View style={styles.macrosListLeft}>
-                          <View style={[styles.macroIndicator, { backgroundColor: calorieColors.carbs }]} />
-                          <Text style={[styles.macrosListLabel, { color: theme.text }]}>
+                      <View style={styles.macroRow}>
+                        <View style={styles.macroRowLeft}>
+                          <View style={[styles.macroRowDot, { backgroundColor: calorieColors.carbs }]} />
+                          <Text style={[styles.macroRowLabel, { color: theme.subtitles }]}>
                             Carbs
                           </Text>
                         </View>
-                        <Text style={[styles.macrosListValue, { color: theme.text }]}>
+                        <Text style={[styles.macroRowValue, { color: theme.text }]}>
                           {dayData.carbs}g
                         </Text>
                       </View>
-                      <View style={styles.macrosListItem}>
-                        <View style={styles.macrosListLeft}>
-                          <View style={[styles.macroIndicator, { backgroundColor: calorieColors.fat }]} />
-                          <Text style={[styles.macrosListLabel, { color: theme.text }]}>
+                      <View style={styles.macroRow}>
+                        <View style={styles.macroRowLeft}>
+                          <View style={[styles.macroRowDot, { backgroundColor: calorieColors.fat }]} />
+                          <Text style={[styles.macroRowLabel, { color: theme.subtitles }]}>
                             Fat
                           </Text>
                         </View>
-                        <Text style={[styles.macrosListValue, { color: theme.text }]}>
+                        <Text style={[styles.macroRowValue, { color: theme.text }]}>
                           {dayData.fat}g
                         </Text>
                       </View>
                     </View>
                   </View>
+
+                  {/* Meals List */}
+                  {dayFoods.length > 0 && (
+                    <>
+                      <Text style={[styles.mealsTitle, { color: theme.text }]}>Meals</Text>
+                      {dayFoods.map((food) => (
+                        <View key={food.id} style={[styles.mealCard, { backgroundColor: theme.cards }]}>
+                          <View style={styles.mealHeader}>
+                            <Text style={[styles.mealName, { color: theme.text }]}>
+                              {food.name}
+                            </Text>
+                            <Text style={[styles.mealCalories, { color: theme.text }]}>
+                              {food.calories} kcal
+                            </Text>
+                          </View>
+                          <View style={styles.mealMacros}>
+                            <Text style={[styles.mealMacroText, { color: theme.subtitles }]}>
+                              P: {food.protein}g
+                            </Text>
+                            <Text style={[styles.mealMacroText, { color: theme.subtitles }]}>
+                              C: {food.carbs}g
+                            </Text>
+                            <Text style={[styles.mealMacroText, { color: theme.subtitles }]}>
+                              F: {food.fats}g
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
                 </>
               )}
             </ScrollView>
@@ -516,46 +652,43 @@ export default function Analytics() {
     );
   };
 
+
   return (
     <SafeAreaView
       style={[styles.fullScreen, { backgroundColor: theme.background }]}
-      edges={["left", "right", "bottom"]}
+      edges={["left", "right"]} // No bottom edge for floating tab bar
     >
       <StatusBar
         backgroundColor={theme.background}
         barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
       />
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={styles.timebuttons}>
+      <View style={styles.header}>
+        <Text style={[styles.pageTitle, { color: theme.text }]}>Analytics</Text>
+        <View style={[styles.periodSelector, { backgroundColor: theme.cards }]}>
           {(["week", "month"] as const).map((period) => (
-            <Pressable
+            <TouchableOpacity
               key={period}
               onPress={() => setSelectedPeriod(period)}
-              style={({ pressed }) => [
-                styles.links,
-                pressed && { opacity: 0.7 },
+              style={[
+                styles.periodButton,
+                selectedPeriod === period && { backgroundColor: theme.background },
               ]}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
-                  styles.linkText,
-                  { color: theme.text },
-                  selectedPeriod === period && { fontWeight: "600" },
+                  styles.periodText,
+                  { color: theme.subtitles },
+                  selectedPeriod === period && { color: theme.text, fontWeight: "600" },
                 ]}
               >
                 {period[0].toUpperCase() + period.slice(1)}
               </Text>
-              {selectedPeriod === period && (
-                <View
-                  style={[
-                    styles.activePeriodIndicator,
-                    { backgroundColor: theme.text },
-                  ]}
-                />
-              )}
-            </Pressable>
+            </TouchableOpacity>
           ))}
         </View>
+      </View>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: contentBottomPadding }]} showsVerticalScrollIndicator={false}>
         {selectedPeriod === "week" ? renderWeekView() : renderMonthView()}
       </ScrollView>
       {renderDayModal()}
@@ -564,292 +697,233 @@ export default function Analytics() {
 }
 
 const styles = StyleSheet.create({
-  fullScreen: { flex: 1 },
-  mainContentWrapper: {
-    paddingHorizontal: 18,
-    paddingTop: 4,
-    paddingBottom: 24,
+  fullScreen: {
+    flex: 1
   },
-  // Header Stats
-  headerStatsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  statCardSmall: {
+  loadingContainer: {
     flex: 1,
-    borderRadius: 16,
-    padding: 14,
-    alignItems: "center",
-    elevation: 1,
-    shadowColor: "#000",
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  mealsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  mealCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  statValueSmall: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 4,
-    letterSpacing: -0.4,
-  },
-  statLabelSmall: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  // Large stat cards
-  statCardLarge: {
-    flex: 1,
-    borderRadius: 18,
-    padding: 20,
-    alignItems: "center",
+    shadowRadius: 4,
     elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
   },
-  statValueLarge: {
-    fontSize: 26,
-    fontWeight: "800",
+  mealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  mealName: {
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  mealCalories: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  mealMacros: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  mealMacroText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
+  // Header
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "700",
     letterSpacing: -0.5,
   },
-  statLabelLarge: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    textAlign: "center",
-  },
-  // Macros Card
-  macrosCard: {
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  macrosGrid: {
+  periodSelector: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  macroGridItem: {
-    flex: 1,
-    alignItems: "center",
-    gap: 8,
-  },
-  macroCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  macroCircleValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-  },
-  macroGridLabel: {
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.1,
-  },
-  macroGridUnit: {
-    fontSize: 10,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  // Chart Card
-  chartCard: {
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  chartHeader: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 10,
-    letterSpacing: 0.2,
-  },
-  legendRow: {
-    flexDirection: "row",
-    gap: 14,
-    marginTop: 8,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  legendDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-  },
-  legendText: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.1,
-  },
-  barChartContainer: {
-    marginTop: 12,
-    paddingHorizontal: 6,
-  },
-  barsWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    height: 130,
-    gap: 4,
-  },
-  dayBarGroup: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  barStack: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 4,
-    marginBottom: 10,
-    height: 110,
-  },
-  bar: {
-    width: 8,
-    borderRadius: 5,
-    minHeight: 8,
-  },
-  dayLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  // Day Cards
-  dayCard: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    elevation: 0.5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0.5 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
-  },
-  dayCardRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dayCardLeft: {
-    flex: 1,
-  },
-  dayName: {
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 3,
-    letterSpacing: 0.1,
-  },
-  dayInfo: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  daysHeader: {
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 12,
-    marginTop: 6,
-    letterSpacing: 0.2,
-  },
-  // Tab buttons
-  timebuttons: {
-    flexDirection: "row",
-    justifyContent: "center",
-    paddingVertical: 12,
-    marginBottom: 14,
-    gap: 12,
-  },
-  links: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  linkText: {
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  activePeriodIndicator: {
-    marginTop: 6,
-    width: 20,
-    height: 2.5,
-    borderRadius: 1.5,
-  },
-  // Month view styles (keeping existing for compatibility)
-  rowWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    gap: 8,
-  },
-  chartTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  chart: {
     borderRadius: 12,
-    marginVertical: 6,
+    padding: 4,
+    gap: 4,
   },
-  cardFullWidth: {
-    borderRadius: 16,
-    padding: 16,
-    elevation: 1,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-  },
-  macrosRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  periodButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 6,
   },
-  macroItem: {
+  periodText: {
+    fontSize: 14,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+  },
+  // Week Selector (Month View)
+  weekSelector: {
+    flexDirection: "row",
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  weekButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  weekButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+  },
+
+  // Content
+  scrollContent: {
+    flexGrow: 1,
+    // paddingBottom set dynamically via useTabBar hook
+  },
+  mainContentWrapper: {
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  // Hero Card
+  heroCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  heroHeader: {
+    flexDirection: "row",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
+  },
+  heroStatGroup: {
+    flex: 1,
     alignItems: "center",
     gap: 6,
   },
-  macroLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 6,
+  heroValue: {
+    fontSize: 36,
+    fontWeight: "700",
+    letterSpacing: -1,
   },
-  statRow: {
+  heroLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+  heroDivider: {
+    width: 1,
+    backgroundColor: "#ffffff10",
+    marginHorizontal: 16,
+  },
+  heroFooter: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    alignItems: "center",
+  },
+  heroFooterText: {
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
+  // Days Section
+  daysSection: {
+    gap: 10,
+  },
+  dayCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  dayCardContent: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.06)",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+  },
+  dayCardLeft: {
+    gap: 4,
+  },
+  dayCardDay: {
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+  },
+  dayCardSub: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+  },
+  dayCardRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  dayCardValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  dayCardLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    letterSpacing: 0.2,
+  },
+
+  // Days Grid (Month View)
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  dayGridItem: {
+    width: "13.5%",
+    aspectRatio: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  dayGridNumber: {
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   // Modal styles
   modalFullScreen: {
@@ -858,464 +932,172 @@ const styles = StyleSheet.create({
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
+    alignItems: "flex-start",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    letterSpacing: -0.3,
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+    marginTop: 4,
   },
   closeButton: {
-    padding: 0,
+    padding: 4,
   },
-  // Modal tabs
   modalTabs: {
     flexDirection: "row",
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
+    paddingHorizontal: 24,
+    gap: 24,
+    marginBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ffffff10",
   },
   modalTab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  modalTabActive: {
+    paddingBottom: 12,
     position: "relative",
   },
   modalTabText: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "500",
     letterSpacing: 0.1,
-    opacity: 0.5,
-  },
-  modalTabTextActive: {
-    fontWeight: "800",
-    opacity: 1,
   },
   modalTabIndicator: {
     position: "absolute",
-    bottom: 0,
-    height: 3,
-    width: 40,
-    borderRadius: 2,
+    bottom: -1,
+    left: 0,
+    right: 0,
+    height: 2,
+    borderRadius: 1,
   },
   modalScrollView: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
-  modalCard: {
-    borderRadius: 14,
-    padding: 16,
+
+  // Training Card (Modal)
+  trainingCard: {
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 12,
-    elevation: 0.5,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0.5 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  modalSectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    marginBottom: 14,
-  },
-  macroDetailRow: {
-    gap: 14,
-  },
-  macroDetail: {
-    marginBottom: 6,
-  },
-  macroDetailBar: {
-    height: 8,
-    borderRadius: 4,
+  trainingCardType: {
+    fontSize: 17,
+    fontWeight: "600",
+    letterSpacing: -0.2,
     marginBottom: 10,
   },
-  macroDetailInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  macroDetailLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  macroDetailValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
-  caloriesGrid: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    gap: 12,
-  },
-  caloriesGridItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  caloriesGridValue: {
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 6,
-    letterSpacing: -0.4,
-  },
-  caloriesGridLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-  },
-  workoutItemClean: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.06)",
-  },
-  workoutLeft: {
-    flex: 1,
-  },
-  workoutTypeClean: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginBottom: 3,
-    letterSpacing: 0.1,
-  },
-  workoutDurationClean: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  workoutKcalClean: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  // Week detail styles for monthly breakdown
-  weekDetailHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.08)",
-  },
-  weekDetailTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.1,
-  },
-  weekDetailWorkouts: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  weekDetailStats: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  weekDetailStatItem: {
-    alignItems: "center",
-    minWidth: "18%",
-  },
-  weekDetailStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
-  weekDetailStatValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: -0.2,
-  },
-  // Quick Stats Card
-  quickStatsCard: {
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  quickStatsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 14,
-    marginTop: 8,
-  },
-  quickStatItem: {
-    alignItems: "center",
-    minWidth: "22%",
-  },
-  quickStatValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 6,
-    letterSpacing: -0.3,
-  },
-  quickStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  // Expanded Day Cards
-  dayCardExpanded: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  dayCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(128, 128, 128, 0.08)",
-  },
-  dayCardStats: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 12,
-    gap: 8,
-  },
-  dayCardStatItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  dayCardStatValue: {
-    fontSize: 17,
-    fontWeight: "800",
-    marginBottom: 4,
-    letterSpacing: -0.2,
-  },
-  dayCardStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  dayCardMacros: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    gap: 10,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(128, 128, 128, 0.08)",
-  },
-  dayCardMacroItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  macroIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dayCardMacroText: {
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.1,
-  },
-  // Section headers
-  sectionHeader: {
-    fontSize: 17,
-    fontWeight: "800",
-    marginBottom: 14,
-    marginTop: 8,
-    letterSpacing: 0.3,
-  },
-  // History cards
-  historyCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-  },
-  historyCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  historyCardTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.1,
-  },
-  historyCardDay: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.2,
-  },
-  historyCardStats: {
+  trainingCardStats: {
     flexDirection: "row",
     gap: 16,
   },
-  historyCardStatItem: {
+  trainingCardStat: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
-  historyCardStatText: {
+  trainingCardStatText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "500",
     letterSpacing: 0.1,
   },
-  // Nutrition stats
-  nutritionStats: {
-    gap: 10,
-  },
-  nutritionStatRow: {
+
+  // Nutrition Grid (Modal)
+  nutritionGrid: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 6,
+    gap: 12,
+    marginBottom: 16,
   },
-  nutritionStatLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    letterSpacing: 0.1,
-  },
-  nutritionStatValue: {
-    fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: -0.1,
-  },
-  // Empty state
-  emptyCard: {
+  nutritionCard: {
+    flex: 1,
     borderRadius: 16,
-    padding: 24,
-    marginBottom: 12,
+    padding: 20,
     alignItems: "center",
-    elevation: 0.5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 0.5 },
-    shadowOpacity: 0.02,
-    shadowRadius: 2,
-  },
-  emptyText: {
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: 0.1,
-  },
-  // Simple day cards
-  daySimpleCard: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    elevation: 1,
+    gap: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
-    shadowRadius: 3,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  daySimpleText: {
-    fontSize: 16,
+  nutritionValue: {
+    fontSize: 28,
     fontWeight: "700",
-    letterSpacing: 0.1,
+    letterSpacing: -0.7,
   },
-  daySimpleCardEmpty: {
-    opacity: 0.5,
-  },
-  // Training items in modal
-  trainingItem: {
-    gap: 12,
-  },
-  trainingType: {
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: 0.1,
-  },
-  trainingDetails: {
-    flexDirection: "row",
-    gap: 20,
-  },
-  trainingDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  trainingDetailText: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.1,
-  },
-  // Meal content in modal
-  mealSectionTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 14,
+  nutritionLabel: {
+    fontSize: 12,
+    fontWeight: "500",
     letterSpacing: 0.2,
   },
-  mealStatsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    gap: 12,
+
+  // Macros Card (Modal)
+  macrosCard: {
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  mealStatItem: {
-    flex: 1,
-    alignItems: "center",
+  macrosCardTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: -0.2,
+    marginBottom: 16,
   },
-  mealStatValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 6,
-    letterSpacing: -0.3,
-  },
-  mealStatLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  macrosList: {
+  macrosCardList: {
     gap: 14,
   },
-  macrosListItem: {
+  macroRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
   },
-  macrosListLeft: {
+  macroRowLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
   },
-  macrosListLabel: {
+  macroRowDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  macroRowLabel: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "500",
     letterSpacing: 0.1,
   },
-  macrosListValue: {
-    fontSize: 16,
-    fontWeight: "800",
+  macroRowValue: {
+    fontSize: 17,
+    fontWeight: "600",
     letterSpacing: -0.2,
   },
+
+  // Empty State
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 16,
+  },
+  emptyText: {
+    fontSize: 15,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+  },
+
 });
